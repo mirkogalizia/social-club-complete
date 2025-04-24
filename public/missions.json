@@ -1,1 +1,12 @@
-// missions.json placeholder content
+[
+  {
+    "image": "https://example.com/img1.jpg",
+    "link": "https://instagram.com/p/abc123",
+    "reward": 1
+  },
+  {
+    "image": "https://example.com/img2.jpg",
+    "link": "https://instagram.com/p/def456",
+    "reward": 1
+  }
+]
