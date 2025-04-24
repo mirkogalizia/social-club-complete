@@ -4,6 +4,7 @@ import auth from '../firebase/auth';
 import { useRouter } from 'next/router';
 
 interface Mission { image: string; link: string; reward: number; username?: string; }
+interface Badge { id: string; title: string; iconUrl: string; criterionValue: number; }
 
 const PLAN_LIMITS = { standard: 5, gold: 15, vip: 30 };
 
@@ -11,8 +12,10 @@ export default function Dashboard() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [credits, setCredits] = useState(0);
+  const [badges, setBadges] = useState<Badge[]>([]);
+  const [unlocked, setUnlocked] = useState<Badge[]>([]);
   const router = useRouter();
-  const userPlan = 'vip'; // TODO: fetch from user profile
+  const userPlan = 'vip';
   const maxPerDay = PLAN_LIMITS[userPlan];
 
   useEffect(() => {
@@ -22,13 +25,20 @@ export default function Dashboard() {
     fetch('/missions.json')
       .then(r => r.json())
       .then(setMissions);
+    fetch('/badges.json')
+      .then(r => r.json())
+      .then(setBadges);
     return () => unsub();
   }, [router]);
 
   const handleComplete = () => {
     if (currentIndex >= maxPerDay) return;
+    const nextIndex = currentIndex + 1;
     setCredits(prev => prev + missions[currentIndex].reward);
-    setCurrentIndex(prev => prev + 1);
+    setCurrentIndex(nextIndex);
+    // Check badges
+    const newlyUnlocked = badges.filter(b => nextIndex >= b.criterionValue);
+    setUnlocked(newlyUnlocked);
   };
 
   const mission = missions[currentIndex];
@@ -56,6 +66,18 @@ export default function Dashboard() {
             <button onClick={handleComplete} disabled={currentIndex >= maxPerDay} className={`flex-1 py-3 rounded-full font-semibold ${currentIndex < maxPerDay ? 'bg-white text-black hover:bg-gray-200' : 'bg-gray-600 text-gray-400 cursor-not-allowed'}`}>
               {currentIndex < maxPerDay ? 'Fatto' : 'Limite raggiunto'}
             </button>
+          </div>
+        </div>
+        {/* Badge Section */}
+        <div>
+          <h3 className="text-xl font-semibold text-white mb-4">I tuoi Badge</h3>
+          <div className="flex gap-4 overflow-x-auto">
+            {unlocked.map(b => (
+              <div key={b.id} className="flex flex-col items-center">
+                <img src={b.iconUrl} alt={b.title} className="w-16 h-16 mb-1" />
+                <span className="text-xs text-gray-300">{b.title}</span>
+              </div>
+            ))}
           </div>
         </div>
         <button onClick={() => { signOut(auth); router.replace('/login'); }} className="w-full py-3 bg-red-600 text-white rounded-full hover:bg-red-700 transition">
