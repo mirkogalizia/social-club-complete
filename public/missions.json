@@ -1,0 +1,15 @@
+
+[
+  {
+    "imageUrl": "https://example.com/img1.jpg",
+    "postUrl": "https://instagram.com/p/abc123",
+    "username": "user1",
+    "reward": 1
+  },
+  {
+    "imageUrl": "https://example.com/img2.jpg",
+    "postUrl": "https://instagram.com/p/def456",
+    "username": "user2",
+    "reward": 1
+  }
+]
