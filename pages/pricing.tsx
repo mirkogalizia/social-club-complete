@@ -25,22 +25,33 @@ export default function Pricing() {
     }
   }, [plan, router])
 
-  if (!plan) return <p className="p-8 text-white">Loading…</p>
+  // **NUOVO** fallback full-screen
+  if (!plan) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <p className="text-lg">Loading…</p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-8">
-      <h1 className="text-4xl font-bold mb-6">Conferma {label.name}</h1>
+      <h1 className="text-4xl font-bold mb-6">Conferma il piano {label.name}</h1>
       <p className="text-2xl mb-4">
-        Prezzo: <span className="font-semibold">{label.eur} € (one-time)</span>
+        Prezzo (one-time): <span className="font-semibold">{label.eur} €</span>
       </p>
-      <p className="mb-8">Dopo il pagamento riceverai {label.eur} like da spendere quando vuoi.</p>
+      <p className="mb-8">
+        Dopo l’acquisto riceverai {label.eur} like gratuiti da utilizzare quando vuoi.
+      </p>
       <div className="flex gap-4">
         <Link href="/">
-          <a className="px-6 py-3 border border-gray-500 rounded hover:bg-gray-700 transition">Annulla</a>
+          <a className="px-6 py-3 border border-gray-500 rounded hover:bg-gray-700 transition">
+            Annulla
+          </a>
         </Link>
         <button
           onClick={() => {
-            // qui invochi il tuo flow: Coinbase Commerce / BTCPay / on-chain
+            // qui invocherai il flow di pagamento crypto anonimo
             router.push(`/api/create-invoice?plan=${plan}&amount=${label.eur}`)
           }}
           className="px-6 py-3 bg-yellow-500 text-black rounded hover:bg-yellow-600 transition"
