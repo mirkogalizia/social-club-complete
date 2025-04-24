@@ -10,20 +10,17 @@ export default function Login() {
   const [error, setError] = useState('')
   const router = useRouter()
 
-  // Se già loggato, redirect immediato (replace to avoid history push)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, user => {
-      if (user) {
-        router.replace('/dashboard')
-      }
+      if (user) router.replace('/dashboard')
     })
     return () => unsubscribe()
   }, [router])
 
-  const handleLogin = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
     try {
       await signInWithEmailAndPassword(auth, email, password)
-      // replace evita di aggiungere la /login nello storico
       router.replace('/dashboard')
     } catch {
       setError('Email o password non corretti')
@@ -32,7 +29,10 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center">
-      <div className="bg-gray-800 p-8 rounded-xl shadow-md w-full max-w-sm">
+      <form
+        onSubmit={handleLogin}
+        className="bg-gray-800 p-8 rounded-xl shadow-md w-full max-w-sm"
+      >
         <h2 className="text-2xl font-bold mb-6 text-center">Accedi</h2>
         <input
           name="email"
@@ -54,7 +54,7 @@ export default function Login() {
         />
         {error && <p className="text-red-400 mb-4">{error}</p>}
         <button
-          onClick={handleLogin}
+          type="submit"
           className="w-full bg-white text-black py-2 rounded font-semibold hover:bg-gray-200"
         >
           Entra
@@ -65,7 +65,8 @@ export default function Login() {
             Registrati
           </Link>
         </p>
-      </div>
+      </form>
     </div>
   )
 }
+
