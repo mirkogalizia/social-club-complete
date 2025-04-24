@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import auth from '../firebase/auth';
+import db from '../firebase/db';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 import { useRouter } from 'next/router';
 
 interface Mission { image: string; link: string; reward: number; username?: string; }
@@ -8,36 +11,81 @@ interface Badge { id: string; title: string; iconUrl: string; criterionValue: nu
 
 const PLAN_LIMITS = { standard: 5, gold: 15, vip: 30 };
 
+function isSameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear()
+      && a.getMonth() === b.getMonth()
+      && a.getDate() === b.getDate();
+}
+
+function isNextDay(a: Date, b: Date) {
+  const next = new Date(a);
+  next.setDate(a.getDate() + 1);
+  return isSameDay(next, b);
+}
+
 export default function Dashboard() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [credits, setCredits] = useState(0);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [unlocked, setUnlocked] = useState<Badge[]>([]);
+  const [streak, setStreak] = useState(0);
+  const [userId, setUserId] = useState<string | null>(null);
   const router = useRouter();
   const userPlan = 'vip';
   const maxPerDay = PLAN_LIMITS[userPlan];
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, user => {
-      if (!user) router.replace('/login');
+    const unsub = onAuthStateChanged(auth, async user => {
+      if (!user) return router.replace('/login');
+      setUserId(user.uid);
+      // load streak
+      const statRef = doc(db, 'stats', user.uid);
+      const statSnap = await getDoc(statRef);
+      if (statSnap.exists()) {
+        setStreak(statSnap.data().streak || 0);
+      }
     });
-    fetch('/missions.json')
-      .then(r => r.json())
-      .then(setMissions);
-    fetch('/badges.json')
-      .then(r => r.json())
-      .then(setBadges);
+    fetch('/missions.json').then(r => r.json()).then(setMissions);
+    fetch('/badges.json').then(r => r.json()).then(setBadges);
     return () => unsub();
   }, [router]);
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (currentIndex >= maxPerDay) return;
     const nextIndex = currentIndex + 1;
     setCredits(prev => prev + missions[currentIndex].reward);
     setCurrentIndex(nextIndex);
+    // badges
     const newly = badges.filter(b => nextIndex >= b.criterionValue);
     setUnlocked(newly);
+    // streak
+    if (userId) {
+      const statRef = doc(db, 'stats', userId);
+      const statSnap = await getDoc(statRef);
+      const today = new Date();
+      let newStreak = 1;
+      if (statSnap.exists()) {
+        const data = statSnap.data();
+        const lastDate = (data.lastCompleted as Timestamp).toDate();
+        if (isSameDay(lastDate, today)) {
+          newStreak = data.streak;
+        } else if (isNextDay(lastDate, today)) {
+          newStreak = (data.streak || 0) + 1;
+        }
+        await updateDoc(statRef, {
+          streak: newStreak,
+          lastCompleted: serverTimestamp(),
+        });
+      } else {
+        await setDoc(statRef, {
+          streak: 1,
+          lastCompleted: serverTimestamp(),
+        });
+        newStreak = 1;
+      }
+      setStreak(newStreak);
+    }
   };
 
   const mission = missions[currentIndex];
@@ -52,6 +100,7 @@ export default function Dashboard() {
           <p className="text-sm text-gray-300">Pacchetto: <span className="font-semibold text-white">{userPlan.toUpperCase()}</span></p>
           <p className="text-sm text-gray-300">Missioni: <span className="font-semibold text-white">{currentIndex} / {maxPerDay}</span></p>
         </div>
+        <p className="text-sm text-gray-300">📅 Streak: <span className="font-semibold text-white">{streak}</span> giorni</p>
         <div className="bg-gray-800/80 backdrop-blur-lg p-8 rounded-2xl shadow-2xl text-center">
           <img src={mission.image} alt="mission" className="rounded-xl mb-6 w-full h-48 object-cover" />
           {mission.username && <h3 className="text-2xl font-bold mb-2">@{mission.username}</h3>}
