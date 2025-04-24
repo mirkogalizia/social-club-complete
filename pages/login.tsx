@@ -19,11 +19,13 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.replace('/dashboard');
-    } catch {
-      setError('Email o password non corretti');
+    } catch (err: any) {
+      console.error('Firebase login error:', err.code, err.message);
+      setError(err.message);
     }
   };
 
@@ -38,5 +40,5 @@ export default function Login() {
         <p className="text-center mt-4 text-sm text-gray-400">Non hai un account? <Link href="/signup" className="underline text-white">Registrati</Link></p>
       </form>
     </div>
-  );
+);
 }
