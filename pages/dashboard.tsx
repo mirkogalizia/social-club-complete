@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface Mission {
-  imageUrl: string
-  postUrl: string
-  username: string
+  id: number
+  image: string
+  link: string
   reward: number
 }
 
@@ -12,7 +12,7 @@ export default function Dashboard() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [credits, setCredits] = useState(0)
 
-  useState(() => {
+  useEffect(() => {
     fetch('/missions.json')
       .then(res => res.json())
       .then(data => setMissions(data))
@@ -20,22 +20,35 @@ export default function Dashboard() {
 
   const handleComplete = () => {
     setCredits(credits + missions[currentIndex].reward)
-    setCurrentIndex(currentIndex + 1)
+    setCurrentIndex(prev => (prev + 1 < missions.length ? prev + 1 : prev))
   }
 
-  const current = missions[currentIndex]
+  if (missions.length === 0) {
+    return <div className="text-white text-center mt-20">Nessuna missione disponibile</div>
+  }
 
-  if (!current) return <p className="text-center mt-10 text-white">Hai completato tutte le missioni di oggi!</p>
+  const mission = missions[currentIndex]
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 flex flex-col items-center justify-center">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-md w-full max-w-md text-center">
-        <img src={current.imageUrl} alt="Post" className="rounded w-full mb-4" />
-        <p className="mb-2">@{current.username}</p>
-        <a href={current.postUrl} target="_blank" className="text-blue-400 underline mb-4 block">Apri post su Instagram</a>
-        <button onClick={handleComplete} className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Fatto</button>
-        <p className="mt-4 text-sm">Crediti guadagnati: {credits}</p>
-        <p className="text-sm text-gray-400">Missione {currentIndex + 1} / {missions.length}</p>
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-4">
+      <div className="bg-gray-800 p-6 rounded-xl shadow w-full max-w-md text-center">
+        <h2 className="text-2xl font-bold mb-4">Missione del giorno</h2>
+        <img src={mission.image} alt="mission" className="rounded mb-4 w-full h-auto" />
+        <a
+          href={mission.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-400 underline block mb-4"
+        >
+          Vai al post Instagram
+        </a>
+        <button
+          onClick={handleComplete}
+          className="w-full bg-white text-black py-2 rounded font-semibold hover:bg-gray-300 transition"
+        >
+          Fatto ✅ (+{mission.reward} crediti)
+        </button>
+        <p className="mt-4 text-sm text-gray-400">Crediti totali: {credits}</p>
       </div>
     </div>
   )
