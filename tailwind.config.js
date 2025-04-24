@@ -1,7 +1,1 @@
-module.exports = {
-  content: ["./pages/**/*.{js,ts,jsx,tsx}"],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
+// tailwind.config.js placeholder content
