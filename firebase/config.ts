@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD4ZN478biSm6md1WoWT31LiJkLcb71NEU",
+  apiKey: "AIzaSyD6e2fUcX2vIwZ_RAkqRi8H_t4wIQjerK8bw",
   authDomain: "app-prova-82b57.firebaseapp.com",
   projectId: "app-prova-82b57",
   storageBucket: "app-prova-82b57.appspot.com",

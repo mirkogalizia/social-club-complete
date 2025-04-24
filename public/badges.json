@@ -2,13 +2,13 @@
   {
     "id": "first-like",
     "title": "Primo Like",
-    "iconUrl": "https://via.placeholder.com/64?text=1+Like",
+    "iconUrl": "/images/badges/first-like.svg",
     "criterionValue": 1
   },
   {
     "id": "five-likes",
     "title": "5 Likes",
-    "iconUrl": "https://via.placeholder.com/64?text=5+Likes",
+    "iconUrl": "/images/badges/five-likes.svg",
     "criterionValue": 5
   }
 ]
