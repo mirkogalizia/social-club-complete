@@ -6,6 +6,7 @@ import { doc, getDoc, setDoc, updateDoc, serverTimestamp, increment } from 'fire
 import { Timestamp } from 'firebase/firestore';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 
 interface Mission { image: string; link: string; reward: number; username?: string; }
 interface Badge { id: string; title: string; iconUrl: string; criterionValue: number; }
@@ -75,6 +76,7 @@ export default function Dashboard() {
     setStreak(newStreak);
     // score
     await updateScore(user.uid, missions[currentIndex].reward, { displayName:user.displayName||undefined, photoURL:user.photoURL||undefined });
+    toast.success(`+${missions[currentIndex].reward} crediti!`);
   };
 
   const mission=missions[currentIndex];
