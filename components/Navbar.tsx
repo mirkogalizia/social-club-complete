@@ -10,21 +10,21 @@ export default function Navbar() {
   const [user, setUser] = useState<boolean>(false)
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(u => setUser(!!u))
-    return () => unsubscribe()
+    const unsub = auth.onAuthStateChanged(u => setUser(!!u))
+    return () => unsub()
   }, [])
+
+  const linkClasses = (active: boolean) =>
+    `px-4 py-2 rounded-full font-medium transition ${
+      active
+        ? 'bg-yellow-500 text-black'
+        : 'bg-transparent text-white hover:bg-gray-700'
+    }`
 
   const handleLogout = async () => {
     await signOut(auth)
     router.push('/')
   }
-
-  const linkClasses = (active: boolean) =>
-    `px-4 py-2 rounded-full font-medium transition ${
-      active 
-        ? 'bg-yellow-500 text-black' 
-        : 'bg-transparent text-white hover:bg-gray-700'
-    }`
 
   return (
     <nav className="bg-gradient-to-br from-gray-900 to-black shadow-lg">
@@ -38,17 +38,14 @@ export default function Navbar() {
           <Link href="/">
             <a className={linkClasses(router.pathname === '/')}>Home</a>
           </Link>
-
           {user ? (
             <>
               <Link href="/dashboard">
-                <a className={linkClasses(router.pathname === '/dashboard')}>
-                  Dashboard
-                </a>
+                <a className={linkClasses(router.pathname === '/dashboard')}>Dashboard</a>
               </Link>
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 rounded-full bg-red-600 text-white font-medium hover:bg-red-500 transition"
+                className="px-4 py-2 rounded-full bg-red-600 text-white hover:bg-red-500 transition"
               >
                 Esci
               </button>
@@ -56,14 +53,10 @@ export default function Navbar() {
           ) : (
             <>
               <Link href="/login">
-                <a className={linkClasses(router.pathname === '/login')}>
-                  Accedi
-                </a>
+                <a className={linkClasses(router.pathname === '/login')}>Accedi</a>
               </Link>
               <Link href="/signup">
-                <a className={linkClasses(router.pathname === '/signup')}>
-                  Registrati
-                </a>
+                <a className={linkClasses(router.pathname === '/signup')}>Registrati</a>
               </Link>
             </>
           )}
@@ -72,5 +65,3 @@ export default function Navbar() {
     </nav>
   )
 }
-
-
