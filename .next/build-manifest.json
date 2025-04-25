@@ -32,11 +32,6 @@
       "static/chunks/main.js",
       "static/chunks/pages/dashboard.js"
     ],
-    "/leaderboard": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/leaderboard.js"
-    ],
     "/login": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
