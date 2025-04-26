@@ -1,13 +1,16 @@
-import { initializeApp } from 'firebase/app';
+// firebase/config.ts
+
+import { initializeApp } from 'firebase/app'
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD4ZN478biSm6md1WoWT31LiJkLcb71NEU",
-  authDomain: "app-prova-82b57.firebaseapp.com",
-  projectId: "app-prova-82b57",
-  storageBucket: "app-prova-82b57.appspot.com",
-  messagingSenderId: "347411967080",
-  appId: "1:347411967080:web:12cefffe0be9bf5b231fdd"
-};
+  apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+  authDomain:        process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+  projectId:         process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+  storageBucket:     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+  appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+}
 
-const app = initializeApp(firebaseConfig);
-export default app;
+const app = initializeApp(firebaseConfig)
+
+export default app
