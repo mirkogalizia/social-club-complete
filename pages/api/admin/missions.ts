@@ -1,28 +1,18 @@
 // pages/api/admin/missions.ts
 
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { getAuth }                 from 'firebase-admin/auth'
-import { db }                      from '../../../firebase/admin'
-import { Timestamp }               from 'firebase-admin/firestore'
+import { getAuth }      from 'firebase-admin/auth'
+import { db }           from '../../../firebase/admin'
+import { Timestamp }    from 'firebase-admin/firestore'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log('🛠️  [missions] method:', req.method)
 
-  // 1) Se è GET, restituisco un JSON di debug
-  if (req.method === 'GET') {
-    res.setHeader('Allow', ['GET','POST'])
-    return res
-      .status(200)
-      .json({ message: 'Endpoint /api/admin/missions → usa POST con Bearer token per aggiungere missioni.' })
-  }
-
-  // 2) Se non è POST, 405
   if (req.method !== 'POST') {
-    res.setHeader('Allow', ['GET','POST'])
+    res.setHeader('Allow', ['POST'])
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` })
   }
 
-  // 3) Solo POST da qui in poi
   try {
     const authHeader = req.headers.authorization
     if (!authHeader?.startsWith('Bearer ')) {
@@ -30,11 +20,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const token = authHeader.split('Bearer ')[1]
 
+    // Verifica token e admin-email
     const decoded = await getAuth().verifyIdToken(token)
-    if (decoded.email?.toLowerCase() !== process.env.ADMIN_EMAIL?.toLowerCase()) {
+    // fallback su NEXT_PUBLIC_ADMIN_EMAIL se ADMIN_EMAIL non è definita
+    const adminEmail = process.env.ADMIN_EMAIL ?? process.env.NEXT_PUBLIC_ADMIN_EMAIL
+    if (!decoded.email || decoded.email.toLowerCase() !== adminEmail?.toLowerCase()) {
+      console.error(`🚫 [missions] user ${decoded.email} not authorized`)
       return res.status(403).json({ error: 'Forbidden: not an admin' })
     }
 
+    // Estrai e valida body
     const { url, standard, gold, vip } = req.body as {
       url: string
       standard: number
@@ -42,9 +37,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       vip: number
     }
     if (!url || standard == null || gold == null || vip == null) {
-      return res.status(400).json({ error: 'Missing required fields' })
+      return res.status(400).json({ error: 'Missing required fields (url, standard, gold, vip)' })
     }
 
+    // Scrivi su Firestore
     await db.collection('missions').add({
       url,
       rewards: { standard, gold, vip },
@@ -52,9 +48,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
 
     return res.status(200).json({ ok: true })
-  } catch (error: any) {
-    console.error('🔥 [missions] unexpected error:', error)
-    return res.status(500).json({ error: error.message || 'Internal Server Error' })
+  } catch (err: any) {
+    console.error('🔥 [missions] unexpected error:', err)
+    // restituisco sempre un JSON con il messaggio di errore
+    return res
+      .status(500)
+      .json({ error: err.message ?? 'Internal Server Error' })
   }
 }
 
