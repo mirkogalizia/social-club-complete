@@ -1,6 +1,6 @@
 // pages/admin/index.tsx
 import { useState, useEffect } from 'react'
-import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth'
 import auth from '../../firebase/auth'
 import { useRouter } from 'next/router'
 
@@ -15,8 +15,14 @@ export default function AdminPage() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(getAuth(), u => {
-      if (!u) return router.push('/login')
-      setUser(u)
+      if (!u) return router.push('/admin/login')
+      // Controllo email admin lato client
+      if (u.email !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
+        signOut(auth)
+        router.push('/admin/login')
+      } else {
+        setUser(u)
+      }
     })
     return () => unsubscribe()
   }, [])
@@ -85,7 +91,7 @@ export default function AdminPage() {
         </div>
         <button
           onClick={handleSubmit}
-          className="w-full bg-yellow-500 text-black py-2 rounded font-semibold hover:bg-yellow-600"
+          className="w-full bg-yellow-500 text-black py-2 rounded font-semibold hover:bg-yellow-600 transition"
         >
           Aggiungi Missione
         </button>
@@ -94,3 +100,4 @@ export default function AdminPage() {
     </div>
   )
 }
+
