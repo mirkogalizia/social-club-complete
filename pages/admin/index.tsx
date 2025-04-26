@@ -13,79 +13,97 @@ export default function AdminPage() {
   const [vip, setVip] = useState(3)
   const [msg, setMsg] = useState('')
 
+  // Protezione pagina: solo admin con email specifica
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(getAuth(), u => {
-      if (!u) return router.push('/admin/login')
-      // Controllo email admin lato client
-      if (u.email !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
-        signOut(auth)
-        router.push('/admin/login')
+      if (!u) {
+        // Non loggato → login admin
+        router.replace('/admin/login')
+      } else if (u.email !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
+        // Loggato ma non admin → logout e login admin
+        signOut(auth).then(() => {
+          router.replace('/admin/login')
+        })
       } else {
+        // Utente admin ok
         setUser(u)
       }
     })
-    return () => unsubscribe()
-  }, [])
+    return unsubscribe
+  }, [router])
 
   const handleSubmit = async () => {
+    if (!url.trim()) {
+      setMsg('❌ Inserisci un URL valido')
+      return
+    }
     setMsg('⏳ Caricamento…')
     const token = await user.getIdToken()
-    const res = await fetch('/api/admin/missions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ url, standard: std, gold, vip }),
-    })
-    if (res.ok) {
-      setMsg('✅ Missione aggiunta!')
-      setUrl(''); setStd(1); setGold(2); setVip(3)
-    } else {
-      const err = await res.json()
-      setMsg(`❌ Errore: ${err.error}`)
+    try {
+      const res = await fetch('/api/admin/missions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ url, standard: std, gold, vip }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setMsg('✅ Missione aggiunta!')
+        setUrl('')
+        setStd(1)
+        setGold(2)
+        setVip(3)
+      } else {
+        setMsg(`❌ Errore: ${data.error || res.status}`)
+      }
+    } catch (e) {
+      console.error(e)
+      setMsg('❌ Errore di rete')
     }
   }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
-      <h1 className="text-3xl mb-6">🎛️ Admin Panel</h1>
+      <h1 className="text-3xl font-bold mb-6">🎛️ Pannello Admin</h1>
       <div className="max-w-lg space-y-4">
         <div>
-          <label className="block mb-1">URL Instagram</label>
+          <label className="block mb-1 font-medium">URL Instagram</label>
           <input
             type="url"
             value={url}
             onChange={e => setUrl(e.target.value)}
+            placeholder="https://instagram.com/p/..."
             className="w-full p-2 rounded bg-gray-800 focus:outline-none"
           />
         </div>
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label>Standard</label>
+            <label className="block mb-1 font-medium">Standard</label>
             <input
               type="number"
               value={std}
               onChange={e => setStd(+e.target.value)}
-              className="w-full p-2 rounded bg-gray-800"
+              className="w-full p-2 rounded bg-gray-800 focus:outline-none"
             />
           </div>
           <div>
-            <label>Gold</label>
+            <label className="block mb-1 font-medium">Gold</label>
             <input
               type="number"
               value={gold}
               onChange={e => setGold(+e.target.value)}
-              className="w-full p-2 rounded bg-gray-800"
+              className="w-full p-2 rounded bg-gray-800 focus:outline-none"
             />
           </div>
           <div>
-            <label>VIP</label>
+            <label className="block mb-1 font-medium">VIP</label>
             <input
               type="number"
               value={vip}
               onChange={e => setVip(+e.target.value)}
-              className="w-full p-2 rounded bg-gray-800"
+              className="w-full p-2 rounded bg-gray-800 focus:outline-none"
             />
           </div>
         </div>
@@ -100,4 +118,3 @@ export default function AdminPage() {
     </div>
   )
 }
-
