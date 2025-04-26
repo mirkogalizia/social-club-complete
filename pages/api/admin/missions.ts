@@ -6,30 +6,35 @@ import { db }                      from '../../../firebase/admin'
 import { Timestamp }               from 'firebase-admin/firestore'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // DEBUG: qual è il metodo che arriva?
   console.log('🛠️  [missions] method:', req.method)
 
-  // Accettiamo soltanto POST per creare missioni
+  // 1) Se è GET, restituisco un JSON di debug
+  if (req.method === 'GET') {
+    res.setHeader('Allow', ['GET','POST'])
+    return res
+      .status(200)
+      .json({ message: 'Endpoint /api/admin/missions → usa POST con Bearer token per aggiungere missioni.' })
+  }
+
+  // 2) Se non è POST, 405
   if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST'])
+    res.setHeader('Allow', ['GET','POST'])
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` })
   }
 
+  // 3) Solo POST da qui in poi
   try {
-    // 1) Token Bearer in header
     const authHeader = req.headers.authorization
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader?.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Missing or invalid Authorization header' })
     }
     const token = authHeader.split('Bearer ')[1]
 
-    // 2) Verifica del token e controllo email admin
     const decoded = await getAuth().verifyIdToken(token)
     if (decoded.email?.toLowerCase() !== process.env.ADMIN_EMAIL?.toLowerCase()) {
       return res.status(403).json({ error: 'Forbidden: not an admin' })
     }
 
-    // 3) Estrai e valida i campi dal body
     const { url, standard, gold, vip } = req.body as {
       url: string
       standard: number
@@ -40,19 +45,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Missing required fields' })
     }
 
-    // 4) Scrivi su Firestore
     await db.collection('missions').add({
       url,
       rewards: { standard, gold, vip },
       createdAt: Timestamp.now(),
     })
 
-    // 5) Risposta OK
     return res.status(200).json({ ok: true })
   } catch (error: any) {
     console.error('🔥 [missions] unexpected error:', error)
     return res.status(500).json({ error: error.message || 'Internal Server Error' })
   }
 }
-
 
