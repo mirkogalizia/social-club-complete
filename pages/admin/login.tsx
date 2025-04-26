@@ -13,17 +13,27 @@ export default function AdminLogin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      // Effettua il login
       await signInWithEmailAndPassword(auth, email, password)
-      const user = getAuth().currentUser!
-      // Controllo email admin
-      if (user.email !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
+      const user = auth.currentUser!
+      // Debug: stampa in console i valori
+      console.log('🛠️  Logged in user.email:', user.email)
+      console.log('🛠️  Expected admin email:', process.env.NEXT_PUBLIC_ADMIN_EMAIL)
+
+      // Controllo case-insensitive dell’email admin
+      const loggedEmail = user.email?.toLowerCase() || ''
+      const adminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || '').toLowerCase()
+      if (loggedEmail !== adminEmail) {
         await signOut(auth)
-        setError('Non sei autorizzato ad accedere al pannello Admin.')
+        setError('⚠️ Non sei autorizzato ad accedere al pannello Admin.')
         return
       }
+
+      // Se tutto ok, vai al pannello Admin
       router.push('/admin')
     } catch (err) {
-      setError('Email o password non corretti.')
+      console.error(err)
+      setError('❌ Email o password non corretti.')
     }
   }
 
@@ -34,6 +44,7 @@ export default function AdminLogin() {
         className="bg-gray-800 p-8 rounded-xl shadow-md w-full max-w-sm"
       >
         <h2 className="text-2xl font-bold mb-6 text-center">Admin Login</h2>
+
         <input
           type="email"
           value={email}
@@ -41,6 +52,7 @@ export default function AdminLogin() {
           placeholder="Email"
           className="w-full mb-4 px-4 py-2 rounded bg-gray-700 text-white focus:outline-none"
         />
+
         <input
           type="password"
           value={password}
@@ -48,7 +60,9 @@ export default function AdminLogin() {
           placeholder="Password"
           className="w-full mb-4 px-4 py-2 rounded bg-gray-700 text-white focus:outline-none"
         />
+
         {error && <p className="text-red-400 mb-4 text-sm">{error}</p>}
+
         <button
           type="submit"
           className="w-full bg-yellow-500 text-black py-2 rounded font-semibold hover:bg-yellow-600 transition"
@@ -59,3 +73,4 @@ export default function AdminLogin() {
     </div>
   )
 }
+
