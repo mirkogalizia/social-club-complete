@@ -1,15 +1,33 @@
 // firebase/admin.ts
-import { initializeApp, cert, getApps } from 'firebase-admin/app'
-import { getFirestore } from 'firebase-admin/firestore'
+import admin from 'firebase-admin'
 
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId:   process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey:  process.env.FIREBASE_PRIVATE_KEY!.replace(/\n/g, '\n'),
-    }),
+if (!admin.apps.length) {
+  // Leggi le variabili d’ambiente
+  const projectId    = process.env.FIREBASE_PROJECT_ID
+  const clientEmail  = process.env.FIREBASE_CLIENT_EMAIL
+  const rawKey       = process.env.FIREBASE_PRIVATE_KEY
+
+  // Controlla che siano tutte presenti
+  if (!projectId || !clientEmail || !rawKey) {
+    throw new Error(
+      'Firebase Admin SDK initialization error: missing ' +
+      [
+        !projectId   ? 'FIREBASE_PROJECT_ID'   : null,
+        !clientEmail ? 'FIREBASE_CLIENT_EMAIL' : null,
+        !rawKey      ? 'FIREBASE_PRIVATE_KEY'  : null,
+      ].filter(Boolean).join(', ')
+    )
+  }
+
+  // Il privateKey deve avere veri newline, non '\n' letterali
+  const privateKey = rawKey.includes('\\n')
+    ? rawKey.replace(/\\n/g, '\n')
+    : rawKey
+
+  admin.initializeApp({
+    credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
   })
 }
 
-export const db = getFirestore()
+export const db        = admin.firestore()
+export const authAdmin = admin.auth()
