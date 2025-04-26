@@ -13,23 +13,18 @@ export default function AdminPage() {
   const [vip, setVip] = useState(3)
   const [msg, setMsg] = useState('')
 
-  // Protezione pagina: solo admin con email specifica
+  // Protegge la pagina: solo admin può restare
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(getAuth(), u => {
       if (!u) {
-        // Non loggato → login admin
         router.replace('/admin/login')
-      } else if (u.email !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
-        // Loggato ma non admin → logout e login admin
-        signOut(auth).then(() => {
-          router.replace('/admin/login')
-        })
+      } else if (u.email?.toLowerCase() !== process.env.NEXT_PUBLIC_ADMIN_EMAIL?.toLowerCase()) {
+        signOut(auth).then(() => router.replace('/admin/login'))
       } else {
-        // Utente admin ok
         setUser(u)
       }
     })
-    return unsubscribe
+    return () => unsubscribe()
   }, [router])
 
   const handleSubmit = async () => {
@@ -38,8 +33,8 @@ export default function AdminPage() {
       return
     }
     setMsg('⏳ Caricamento…')
-    const token = await user.getIdToken()
     try {
+      const token = await user.getIdToken()
       const res = await fetch('/api/admin/missions', {
         method: 'POST',
         headers: {
@@ -48,19 +43,25 @@ export default function AdminPage() {
         },
         body: JSON.stringify({ url, standard: std, gold, vip }),
       })
-      const data = await res.json()
-      if (res.ok) {
+
+      // Legge sempre il testo di risposta
+      const text = await res.text()
+      let data: { ok?: boolean; error?: string } = {}
+      try {
+        data = JSON.parse(text)
+      } catch {
+        data.error = text || res.statusText
+      }
+
+      if (res.ok && data.ok) {
         setMsg('✅ Missione aggiunta!')
-        setUrl('')
-        setStd(1)
-        setGold(2)
-        setVip(3)
+        setUrl(''); setStd(1); setGold(2); setVip(3)
       } else {
         setMsg(`❌ Errore: ${data.error || res.status}`)
       }
-    } catch (e) {
-      console.error(e)
-      setMsg('❌ Errore di rete')
+    } catch (e: any) {
+      console.error('Fetch error:', e)
+      setMsg(`❌ Errore di rete: ${e.message || e}`)
     }
   }
 
@@ -118,3 +119,4 @@ export default function AdminPage() {
     </div>
   )
 }
+
