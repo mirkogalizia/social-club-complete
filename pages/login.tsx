@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
-import auth from '../firebase/auth';
+import { auth } from '../firebase/auth';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 
