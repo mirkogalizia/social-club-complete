@@ -1,112 +1,102 @@
-import { useEffect, useState } from 'react';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import auth from '../firebase/auth';
-import db from '../firebase/db';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, increment } from 'firebase/firestore';
-import { Timestamp } from 'firebase/firestore';
-import { useRouter } from 'next/router';
-import Link from 'next/link';
-
-interface Mission { image: string; link: string; reward: number; username?: string; }
-interface Badge { id: string; title: string; iconUrl: string; criterionValue: number; }
-
-const PLAN_LIMITS = { standard: 5, gold: 15, vip: 30 };
-
-function isSameDay(a: Date, b: Date) {
-  return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
-}
-function isNextDay(a: Date, b: Date) {
-  const next=new Date(a); next.setDate(a.getDate()+1);
-  return isSameDay(next,b);
-}
-
-async function updateScore(uid: string, added: number, profile: { displayName?:string; photoURL?:string }) {
-  const ref = doc(db, 'scores', uid);
-  await setDoc(ref, { displayName: profile.displayName||'Anonimo', photoURL: profile.photoURL||'', updatedAt: serverTimestamp() }, { merge:true });
-  await updateDoc(ref, { totalCredits: increment(added) });
-}
+// pages/dashboard.tsx
+import { useEffect, useState } from 'react'
+import { onAuthStateChanged, signOut, User } from 'firebase/auth'
+import { auth } from '../firebase/auth'
+import { db } from '../firebase/db'
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  serverTimestamp,
+  increment,
+  DocumentData
+} from 'firebase/firestore'
+import { useRouter } from 'next/router'
 
 export default function Dashboard() {
-  const [missions,setMissions]=useState<Mission[]>([]);
-  const [currentIndex,setCurrentIndex]=useState(0);
-  const [credits,setCredits]=useState(0);
-  const [badges,setBadges]=useState<Badge[]>([]);
-  const [unlocked,setUnlocked]=useState<Badge[]>([]);
-  const [streak,setStreak]=useState(0);
-  const [user,setUser]=useState<User|null>(null);
-  const router=useRouter();
-  const plan='vip'; const maxPerDay=PLAN_LIMITS[plan];
+  const [user, setUser] = useState<User|null>(null)
+  const [credits, setCredits] = useState<number>(0)
+  const [missions, setMissions] = useState<DocumentData[]>([])
+  const [currentIndex, setCurrentIndex] = useState<number>(0)
+  const router = useRouter()
 
-  useEffect(()=>{
-    const unsub=onAuthStateChanged(auth, async u=>{
-      if(!u) return router.replace('/login');
-      setUser(u);
-      const statRef=doc(db,'stats',u.uid);
-      const statSnap=await getDoc(statRef);
-      if(statSnap.exists()) setStreak(statSnap.data().streak||0);
-    });
-    fetch('/missions.json').then(r=>r.json()).then(setMissions);
-    fetch('/badges.json').then(r=>r.json()).then(setBadges);
-    return ()=>unsub();
-  },[router]);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, u => {
+      if (!u) {
+        router.push('/login')
+      } else {
+        setUser(u)
+        loadUserData(u.uid)
+      }
+    })
+    return () => unsubscribe()
+  }, [])
 
-  const handleComplete=async()=>{
-    if(currentIndex>=maxPerDay||!user) return;
-    const next=currentIndex+1;
-    setCredits(c=>c+missions[currentIndex].reward);
-    setCurrentIndex(next);
-    const newly=badges.filter(b=>next>=b.criterionValue);
-    setUnlocked(newly);
-    // streak
-    const statRef=doc(db,'stats',user.uid);
-    const statSnap=await getDoc(statRef);
-    const today=new Date();
-    let newStreak=1;
-    if(statSnap.exists()){
-      const data=statSnap.data();
-      const last=(data.lastCompleted as Timestamp).toDate();
-      if(isSameDay(last,today)) newStreak=data.streak;
-      else if(isNextDay(last,today)) newStreak=(data.streak||0)+1;
-      await updateDoc(statRef,{ streak:newStreak, lastCompleted:serverTimestamp() });
-    } else {
-      await setDoc(statRef,{ streak:1, lastCompleted:serverTimestamp() });
-      newStreak=1;
+  const loadUserData = async (uid: string) => {
+    const userSnap = await getDoc(doc(db, 'users', uid))
+    if (userSnap.exists()) {
+      const data = userSnap.data()
+      setCredits(data.credits ?? 0)
+      setMissions(data.missions ?? [])
     }
-    setStreak(newStreak);
-    // score
-    await updateScore(user.uid, missions[currentIndex].reward, { displayName:user.displayName||undefined, photoURL:user.photoURL||undefined });
-  };
+  }
 
-  const mission=missions[currentIndex];
-  if(!mission) return <div className="text-center mt-20 text-white">Hai completato tutte le missioni!</div>;
+  const handleComplete = async () => {
+    if (!user) return
+    const mission = missions[currentIndex]
+    const newCredits = credits + mission.reward
+    await updateDoc(doc(db, 'users', user.uid), {
+      credits: newCredits,
+      lastCompleted: serverTimestamp()
+    })
+    setCredits(newCredits)
+    setCurrentIndex(i => i + 1)
+  }
+
+  const handleLogout = async () => {
+    await signOut(auth)
+    router.push('/')
+  }
+
+  if (!user) return null  // o un loader
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center p-6">
-      <div className="max-w-md w-full space-y-6">
-        <div className="flex justify-between items-center">
-          <p className="text-sm text-gray-300">Pacchetto: <span className="font-semibold text-white">{plan.toUpperCase()}</span></p>
-          <p className="text-sm text-gray-300">Missioni: <span className="font-semibold text-white">{currentIndex} / {maxPerDay}</span></p>
-        </div>
-        <p className="text-sm text-gray-300">📅 Streak: <span className="font-semibold text-white">{streak}</span> giorni</p>
-        <div className="bg-gray-800/80 backdrop-blur-lg p-8 rounded-2xl shadow-2xl text-center">
-          <img src={mission.image} alt="mission" className="rounded-xl mb-6 w-full h-48 object-cover" />
-          {mission.username && <h3 className="text-2xl font-bold mb-2">@{mission.username}</h3>}
-          <p className="text-sm text-gray-300 mb-4">Metti like a questo post per guadagnare <span className="font-semibold text-white">{mission.reward} crediti</span></p>
-          <div className="flex gap-4">
-            <a href={mission.link} target="_blank" rel="noopener" className="flex-1 py-3 rounded-full border border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black transition">Vai a Instagram</a>
-            <button onClick={handleComplete} disabled={currentIndex>=maxPerDay} className={`flex-1 py-3 rounded-full font-semibold ${currentIndex<maxPerDay?'bg-white text-black hover:bg-gray-200':'bg-gray-600 text-gray-400 cursor-not-allowed'}`}>{currentIndex<maxPerDay?'Fatto':'Limite raggiunto'}</button>
+    <div className="min-h-screen bg-gray-900 text-white p-6">
+      <div className="max-w-xl mx-auto">
+        <h1 className="text-3xl font-bold mb-4">Benvenuto, {user.email}</h1>
+        <p className="mb-6">Crediti: <span className="font-mono">{credits}</span></p>
+
+        {missions[currentIndex] ? (
+          <div className="bg-gray-800 p-4 rounded-lg mb-4">
+            <p className="mb-2">Missione #{currentIndex + 1}:</p>
+            <a
+              href={missions[currentIndex].url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-yellow-400"
+            >
+              Vai al link
+            </a>
+            <p className="mt-2">Ricompensa: {missions[currentIndex].reward} crediti</p>
+            <button
+              onClick={handleComplete}
+              className="mt-4 px-4 py-2 bg-yellow-500 text-black rounded hover:bg-yellow-400 transition"
+            >
+              Fatto!
+            </button>
           </div>
-        </div>
-        <div>
-          <h3 className="text-xl font-semibold text-white mb-4">I tuoi Badge</h3>
-          <div className="flex gap-4 overflow-x-auto">{unlocked.map(b=>(
-            <div key={b.id} className="flex flex-col items-center"><img src={b.iconUrl} alt={b.title} className="w-16 h-16 mb-1" /><span className="text-xs text-gray-300">{b.title}</span></div>
-          ))}</div>
-        </div>
-        <div className="text-center mt-4"><Link href="/leaderboard" className="text-sm text-yellow-400 hover:underline">Vedi la Leaderboard</Link></div>
-        <button onClick={()=>{signOut(auth);router.replace('/login')}} className="w-full py-3 bg-red-600 text-white rounded-full hover:bg-red-700 transition">Logout</button>
-        <p className="text-center text-sm text-gray-400">Crediti totali: <span className="font-semibold text-white">{credits}</span></p>
+        ) : (
+          <p className="text-center">Hai completato tutte le missioni 🎉</p>
+        )}
+
+        <button
+          onClick={handleLogout}
+          className="mt-8 w-full py-2 bg-red-600 rounded hover:bg-red-500 transition"
+        >
+          Esci
+        </button>
       </div>
     </div>
-  );
+  )
 }
+
