@@ -1,73 +1,67 @@
 // pages/admin/login.tsx
-import { useState } from 'react'
-import { signInWithEmailAndPassword, getAuth, signOut } from 'firebase/auth'
-import auth from '../../firebase/auth'
+import { useState, FormEvent } from 'react'
+import { signInWithEmailAndPassword } from 'firebase/auth'
+import { auth } from '../../firebase/auth'
 import { useRouter } from 'next/router'
 
 export default function AdminLogin() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string|null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
+    setError(null)
+    setIsLoading(true)
     try {
-      // Effettua il login
-      await signInWithEmailAndPassword(auth, email, password)
-      const user = auth.currentUser!
-      // Debug: stampa in console i valori
-      console.log('🛠️  Logged in user.email:', user.email)
-      console.log('🛠️  Expected admin email:', process.env.NEXT_PUBLIC_ADMIN_EMAIL)
-
-      // Controllo case-insensitive dell’email admin
-      const loggedEmail = user.email?.toLowerCase() || ''
-      const adminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || '').toLowerCase()
-      if (loggedEmail !== adminEmail) {
-        await signOut(auth)
-        setError('⚠️ Non sei autorizzato ad accedere al pannello Admin.')
-        return
+      const cred = await signInWithEmailAndPassword(auth, email, password)
+      if (cred.user.email !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
+        throw new Error('Non autorizzato')
       }
-
-      // Se tutto ok, vai al pannello Admin
-      router.push('/admin')
-    } catch (err) {
-      console.error(err)
-      setError('❌ Email o password non corretti.')
+      router.push('/admin/missions')
+    } catch (err: any) {
+      setError(err.message || 'Errore di login')
+    } finally {
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white px-4">
       <form
         onSubmit={handleSubmit}
-        className="bg-gray-800 p-8 rounded-xl shadow-md w-full max-w-sm"
+        className="bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-sm"
       >
-        <h2 className="text-2xl font-bold mb-6 text-center">Admin Login</h2>
-
+        <h1 className="text-2xl font-bold mb-4 text-center">Admin Login</h1>
+        {error && <p className="bg-red-600 p-2 rounded mb-4">{error}</p>}
         <input
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
           placeholder="Email"
-          className="w-full mb-4 px-4 py-2 rounded bg-gray-700 text-white focus:outline-none"
+          className="w-full mb-3 px-3 py-2 rounded bg-gray-700 focus:outline-none"
+          required
         />
-
         <input
           type="password"
           value={password}
           onChange={e => setPassword(e.target.value)}
           placeholder="Password"
-          className="w-full mb-4 px-4 py-2 rounded bg-gray-700 text-white focus:outline-none"
+          className="w-full mb-3 px-3 py-2 rounded bg-gray-700 focus:outline-none"
+          required
         />
-
-        {error && <p className="text-red-400 mb-4 text-sm">{error}</p>}
-
         <button
           type="submit"
-          className="w-full bg-yellow-500 text-black py-2 rounded font-semibold hover:bg-yellow-600 transition"
+          disabled={isLoading}
+          className={`w-full py-2 rounded font-semibold transition ${
+            isLoading
+              ? 'bg-gray-600 cursor-not-allowed'
+              : 'bg-yellow-500 hover:bg-yellow-400 text-black'
+          }`}
         >
-          Accedi
+          {isLoading ? 'Caricamento...' : 'Accedi'}
         </button>
       </form>
     </div>
