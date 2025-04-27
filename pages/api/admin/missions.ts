@@ -26,7 +26,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
 
-  // ✨ Aggiungiamo il supporto per la GET
   if (req.method === 'GET') {
     try {
       const snapshot = await db.collection('missions').orderBy('createdAt', 'desc').get()
@@ -35,6 +34,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         id: doc.id,
         ...doc.data()
       }))
+
+      console.log('Missions fetched:', missions)
 
       return res.status(200).json(missions)
     } catch (error) {
