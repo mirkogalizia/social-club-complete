@@ -1,120 +1,99 @@
-import { useEffect, useState } from 'react'
-import { onAuthStateChanged, signOut, User } from 'firebase/auth'
-import { auth } from '../firebase/auth'
-import  db  from '../firebase/db'
-import {
-  doc,
-  getDoc,
-  updateDoc,
-  serverTimestamp,
-  arrayUnion
-} from 'firebase/firestore'
-import { useRouter } from 'next/router'
+import { useEffect, useState } from 'react';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { auth } from '../firebase/auth';
+import db from '../firebase/db';  // Corretta la sintassi senza parentesi graffe
+import { doc, getDoc, updateDoc, arrayUnion, increment, serverTimestamp, setDoc } from 'firebase/firestore';
+import { useRouter } from 'next/router';
 
 export default function Dashboard() {
-  const [user, setUser] = useState<User|null>(null)
-  const [credits, setCredits] = useState<number>(0)
-  const [missions, setMissions] = useState<any[]>([])
-  const [completedMissions, setCompletedMissions] = useState<string[]>([])
-  const [currentMission, setCurrentMission] = useState<any|null>(null)
-  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null);
+  const [credits, setCredits] = useState<number>(0);
+  const [missions, setMissions] = useState<any[]>([]);
+  const [currentMission, setCurrentMission] = useState<any | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    onAuthStateChanged(auth, async u => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       if (!u) {
-        router.push('/login')
+        router.push('/login');
       } else {
-        setUser(u)
-        await loadUserData(u.uid)
-        await fetchMissions(u.uid)
+        setUser(u);
+        await loadUserData(u.uid);
+        fetchMissions();
       }
-    })
-  }, [])
+    });
+    return () => unsubscribe();
+  }, []);
 
   const loadUserData = async (uid: string) => {
-    const userSnap = await getDoc(doc(db, 'users', uid))
+    const userSnap = await getDoc(doc(db, 'users', uid));
     if (userSnap.exists()) {
-      const data = userSnap.data()
-      setCredits(data.credits ?? 0)
-      setCompletedMissions(data.completedMissions ?? [])
+      const data = userSnap.data();
+      setCredits(data.credits ?? 0);
     }
-  }
+  };
 
-  const fetchMissions = async (uid: string) => {
-    try {
-      const res = await fetch('/api/admin/missions')
-      const allMissions = await res.json()
-
-      // Filtra missioni non completate
-      const incompleteMissions = allMissions.filter(
-        mission => !completedMissions.includes(mission.id)
-      )
-
-      setMissions(incompleteMissions)
-      setCurrentMission(incompleteMissions[0] ?? null)
-    } catch (error) {
-      console.error('Errore caricamento missioni', error)
+  const fetchMissions = async () => {
+    const missionsSnap = await getDoc(doc(db, 'missions', 'activeMissions'));
+    if (missionsSnap.exists()) {
+      const data = missionsSnap.data();
+      setMissions(data.missions || []);
+      setCurrentMission(data.missions[0] || null);
     }
-  }
+  };
 
   const handleComplete = async () => {
-    if (!user || !currentMission) return
+    if (!user || !currentMission) {
+      console.log('User or mission is missing');
+      return;
+    }
 
-    const userDocRef = doc(db, 'users', user.uid)
+    console.log('Completing mission:', currentMission);
 
-    await updateDoc(userDocRef, {
-      credits: credits + currentMission.rewards,
-      completedMissions: arrayUnion(currentMission.id),
-      lastCompleted: serverTimestamp(),
-    })
+    const userDocRef = doc(db, 'users', user.uid);
 
-    setCredits(c => c + currentMission.rewards)
-    setCompletedMissions([...completedMissions, currentMission.id])
+    // Controlla se l'utente ha già un documento
+    const userDocSnap = await getDoc(userDocRef);
+    
+    if (!userDocSnap.exists()) {
+      // Se il documento non esiste, creane uno
+      console.log('No document found, creating new one...');
+      await setDoc(userDocRef, {
+        credits: currentMission.rewards,
+        completedMissions: arrayUnion(currentMission.id),
+        lastCompleted: serverTimestamp(),
+      });
+    } else {
+      // Se il documento esiste, aggiorna i dati dell'utente
+      await updateDoc(userDocRef, {
+        credits: increment(currentMission.rewards),
+        completedMissions: arrayUnion(currentMission.id),
+        lastCompleted: serverTimestamp(),
+      });
+    }
 
-    const remainingMissions = missions.filter(m => m.id !== currentMission.id)
-    setMissions(remainingMissions)
-    setCurrentMission(remainingMissions[0] ?? null)
-  }
+    setCredits(prevCredits => prevCredits + currentMission.rewards);
+    setCurrentMission(missions[missions.indexOf(currentMission) + 1] || null);
+  };
 
   const handleLogout = async () => {
-    await signOut(auth)
-    router.push('/')
-  }
-
-  if (!user) return null
+    await signOut(auth);
+    router.push('/');
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
-      <div className="max-w-xl mx-auto">
-        <h1 className="text-3xl font-bold mb-4">Benvenuto, {user.email}</h1>
-        <p className="mb-6">Crediti: <span>{credits}</span></p>
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6">Benvenuto, {user?.email}</h1>
+        <p className="mb-6">Crediti: <span className="font-mono">{credits}</span></p>
 
         {currentMission ? (
           <div className="bg-gray-800 p-4 rounded-lg mb-4">
-            <p className="mb-2">Missione:</p>
-            <a href={currentMission.url} target="_blank" className="underline text-yellow-400">
-              Vai al link Instagram
-            </a>
-            <p className="mt-2">Ricompensa: {currentMission.rewards} crediti</p>
-            <button
-              onClick={handleComplete}
-              className="mt-4 px-4 py-2 bg-yellow-500 text-black rounded hover:bg-yellow-400 transition"
+            <p className="mb-2">Missione: {currentMission.url}</p>
+            <a
+              href={currentMission.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-yellow-400"
             >
-              Fatto!
-            </button>
-          </div>
-        ) : (
-          <p className="text-center">Hai completato tutte le missioni 🎉</p>
-        )}
-
-        <button
-          onClick={handleLogout}
-          className="mt-8 w-full py-2 bg-red-600 rounded hover:bg-red-500 transition"
-        >
-          Esci
-        </button>
-      </div>
-    </div>
-  )
-}
 

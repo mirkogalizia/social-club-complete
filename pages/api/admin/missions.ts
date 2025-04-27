@@ -1,6 +1,5 @@
-// pages/api/admin/missions.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { db } from '../../../firebase/admin';
+import { db } from '../../firebase/db';
 import { Timestamp } from 'firebase-admin/firestore';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -15,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await db.collection('missions').add({
         url,
         rewards,
-        createdAt: Timestamp.now(),
+        createdAt: Timestamp.now(), // Usiamo Timestamp di firebase-admin
       });
 
       return res.status(200).json({ success: true });
@@ -25,12 +24,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   } else if (req.method === 'GET') {
     try {
-      const missionsSnapshot = await db.collection('missions').get();
-      const missions = missionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const missionSnap = await db.collection('missions').get();
+      const missions = missionSnap.docs.map(doc => doc.data());
+
       return res.status(200).json(missions);
     } catch (error) {
-      console.error('Mission fetch error:', error);
-      return res.status(500).json({ error: 'Internal Server Error' });
+      console.error('Error fetching missions:', error);
+      return res.status(500).json({ error: 'Error fetching missions' });
     }
   } else {
     res.setHeader('Allow', ['POST', 'GET']);
