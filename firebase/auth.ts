@@ -1,4 +1,5 @@
-import app from './config'
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'
+// firebase/auth.ts
+import { getAuth } from "firebase/auth";
+import { app } from "./firebase";
 
-const auth = getAuth(app)
+export const auth = getAuth(app);
