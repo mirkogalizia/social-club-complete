@@ -11,13 +11,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Missing url or rewards' });
       }
 
-      await db.collection('missions').add({
+      // Aggiungi la missione al database
+      const docRef = await db.collection('missions').add({
         url,
         rewards,
         createdAt: Timestamp.now(), // Usiamo Timestamp di firebase-admin
       });
 
-      return res.status(200).json({ success: true });
+      return res.status(200).json({ success: true, id: docRef.id });
     } catch (error) {
       console.error('Mission creation error:', error);
       return res.status(500).json({ error: 'Internal Server Error' });
@@ -25,7 +26,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else if (req.method === 'GET') {
     try {
       const missionSnap = await db.collection('missions').get();
-      const missions = missionSnap.docs.map(doc => doc.data());
+      if (missionSnap.empty) {
+        return res.status(404).json({ error: 'No missions found' });
+      }
+
+      const missions = missionSnap.docs.map(doc => {
+        return { id: doc.id, ...doc.data() };
+      });
 
       return res.status(200).json(missions);
     } catch (error) {
@@ -37,3 +44,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }
+
