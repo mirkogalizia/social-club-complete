@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { onAuthStateChanged, signOut, User } from 'firebase/auth'
 import { auth } from '../firebase/auth'
-import { db } from '../firebase/db'
+import  db  from '../firebase/db'
 import {
   doc,
   getDoc,
