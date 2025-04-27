@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/router'
 import { motion } from 'framer-motion'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
-import auth from '../firebase/auth'
+import { auth } from '../firebase/auth'
+
 
 const plans = [
   {
